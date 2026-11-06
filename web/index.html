@@ -2651,6 +2651,7 @@ async function khoApi(action, opts={}){
 function khoCopy(sel){ const t=($(sel)||{}).textContent||''; if(!t) return; navigator.clipboard.writeText(t).then(()=>toast('Đã chép')).catch(()=>toast(t)); }
 function khoSetShopName(n){ if(!n) return; ['#khoShopSide','#khoShopTop'].forEach(s=>{ const e=$(s); if(e) e.textContent=n; }); }
 async function loadSettings(){
+  $('#btnDisconnect').style.display='none';
   const el=$('#shopeeStatus'); el.textContent='đang kiểm tra…'; el.className='text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-500';
   let j; try{ j=await khoApi('status'); }catch(e){ j={error:String(e&&e.message||e)}; }
   $('#pushUrl').textContent=(j&&j.function_url)||FUNCTION_URL;
