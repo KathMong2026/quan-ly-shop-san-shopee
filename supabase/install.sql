@@ -42,6 +42,8 @@ create table if not exists public.kho_auth (
   token_expire_at timestamp with time zone,
   updated_at timestamp with time zone default now() not null,
   cron_secret text,
+  auth_state text,
+  auth_state_at timestamp with time zone,
   constraint kho_auth_pkey PRIMARY KEY (id),
   constraint kho_auth_id_check CHECK ((id = 1))
 );
@@ -348,6 +350,10 @@ create table if not exists public.kho_push_subs (
   prefs jsonb not null default '{"hoan": true, "don_huy": true, "don_moi": true, "canh_bao": true}'::jsonb,
   created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
   last_sent_at timestamptz, last_error text);
+
+-- Cột thêm ở bản sau (cho người đã cài bản cũ)
+alter table public.kho_auth add column if not exists auth_state text;
+alter table public.kho_auth add column if not exists auth_state_at timestamp with time zone;
 
 -- Khoá ngoại (chạy lại không lỗi)
 do $$ begin alter table public.kho_backup_lines add constraint kho_backup_lines_backup_id_fkey FOREIGN KEY (backup_id) REFERENCES public.kho_backups(id) ON DELETE CASCADE; exception when duplicate_object then null; end $$;

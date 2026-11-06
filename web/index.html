@@ -15,16 +15,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="vendor/tailwindcss-3.4.17.js"></script>
 <script>
   tailwind.config = { theme: { extend: {
     colors: { brand:{DEFAULT:'#0F766E',50:'#E6F4F1',100:'#fce3ee',200:'#f6c6da',600:'#a81e4e',700:'#8f1a42'} },
     boxShadow:{ soft:'0 1px 2px rgba(28,20,16,.04), 0 6px 20px -10px rgba(28,20,16,.12)', card:'0 1px 2px rgba(28,20,16,.05)' }
   } } };
 </script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/scr'+'ipt>');}</script>
-<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://esm.sh/@supabase/supabase-js@2"><\/scr'+'ipt>');}</script>
+<script src="vendor/supabase-js-2.119.0.js"></script>
 <style>
   :root{ --ac:#0F766E; --ac-soft:#E6F4F1; --sb-bg:#FFFFFF; --sb-bd:rgba(28,20,30,.09); --sb-brand:#241E26; --sb-mut:#A39CAB; --sb-fg:#5F5866; --sb-card:#F7F5F2; }
   *{box-sizing:border-box}
@@ -205,7 +203,7 @@
   if (!DEMO_MODE && typeof supabase === "undefined") {
     document.addEventListener("DOMContentLoaded", function(){
       const m = document.getElementById("loginMsg");
-      if (m){ m.textContent = "Không tải được thư viện kết nối (mạng đang chặn CDN). Hãy tắt VPN/đổi mạng rồi tải lại trang."; m.className = "text-xs mt-4 text-center text-red-600"; }
+      if (m){ m.textContent = "Không tải được thư viện kết nối (thiếu file web/vendor/). Hãy tải lại trang."; m.className = "text-xs mt-4 text-center text-red-600"; }
     });
   }
   let db = (!DEMO_MODE && SUPABASE_URL && SUPABASE_KEY && typeof supabase !== "undefined") ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -395,6 +393,11 @@
       <!-- ===== KẾT NỐI SHOPEE (3 bước) ===== -->
       <div id="scr-settings1" class="screen space-y-4">
         <div class="mb-1"><h2 class="text-lg font-bold text-stone-900">Kết nối Shopee</h2><p class="text-[13px] text-stone-400 mt-0.5">Làm lần lượt 3 bước. Chỉ cần làm 1 lần — sau đó app tự kéo đơn mỗi 20 phút.</p></div>
+        <div id="khoWelcome" class="hidden rounded-2xl p-5 max-w-2xl text-white" style="background:linear-gradient(135deg,#0F766E,#14B8A6)">
+          <div class="text-[15px] font-bold mb-1">👋 Chào mừng! Thiết lập shop Shopee của bạn</div>
+          <div class="text-[12.5px] leading-relaxed opacity-95">App chưa được nối với shop nào. Làm lần lượt <b>Bước 1 → 2 → 3</b> bên dưới (khoảng 5 phút). Cần sẵn: <b>Partner ID + Partner Key</b> (open.shopee.com) và <b>tài khoản người bán</b> Shopee để cấp quyền.</div>
+          <div id="khoWelcomeSteps" class="flex gap-2 mt-3 text-[11.5px] font-semibold flex-wrap"></div>
+        </div>
 
         <div class="bg-white rounded-2xl border border-stone-200 p-6 shadow-card max-w-2xl">
           <div class="flex items-center gap-2 mb-1"><span class="w-6 h-6 rounded-full grid place-items-center text-xs font-bold text-white" style="background:var(--ac)">1</span><div class="font-semibold text-stone-800">Thông tin ứng dụng Shopee Open Platform</div></div>
@@ -2668,6 +2671,9 @@ async function loadSettings(){
   } else if(j.has_key&&j.partner_id){ el.textContent='chưa cấp quyền shop'; el.className='text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700'; $('#shopInfo').innerHTML='Đã có Partner ID/Key — bấm <b>Kết nối shop Shopee</b>.'; }
   else { el.textContent='chưa có thông tin bước 1'; el.className='text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700'; $('#shopInfo').innerHTML='Làm bước 1 trước.'; }
   $('#btnDisconnect').style.display=j.connected?'':'none';
+  { const w=$('#khoWelcome'); if(w){ w.classList.toggle('hidden', !!j.connected);
+    const ok1=!!(j.has_key&&j.partner_id), ok2=!!j.connected; const pill=(t,ok)=>`<span style="background:${ok?'#fff':'rgba(255,255,255,.18)'};color:${ok?'#0F766E':'#fff'};padding:4px 10px;border-radius:99px">${ok?'✓ ':''}${t}</span>`;
+    $('#khoWelcomeSteps').innerHTML=pill('1. Nhập Partner ID/Key',ok1)+pill('2. Cấp quyền shop',ok2)+pill('3. Lấy sản phẩm & đơn',false); } }
   const b=$('#autoSyncBadge'); if(j.connected){ b.textContent='đang bật · mỗi 20 phút'; b.className='text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700'; } else { b.textContent='chờ kết nối shop'; b.className='text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-500'; }
   $('#lastSync').textContent=j.last_order_sync?('Lần kéo đơn gần nhất: '+new Date(j.last_order_sync).toLocaleString('vi-VN')):'';
   return j;
@@ -3229,7 +3235,7 @@ async function khoStart(){
 }
 function khoShowSetup(){
   $('#login').classList.add('hidden'); $('#khoSetup').classList.remove('hidden');
-  const m=$('#khoSbMsg'); if(typeof supabase==='undefined'){ m.className='text-xs mt-4 text-red-600'; m.textContent='Không tải được thư viện Supabase (mạng chặn unpkg.com). Đổi mạng / tắt VPN rồi tải lại trang.'; }
+  const m=$('#khoSbMsg'); if(typeof supabase==='undefined'){ m.className='text-xs mt-4 text-red-600'; m.textContent='Không tải được thư viện Supabase (thiếu file web/vendor/supabase-js-2.119.0.js). Tải lại trang.'; }
 }
 function khoSbMsg(t,ok){ const m=$('#khoSbMsg'); m.textContent=t; m.className='text-xs mt-4 '+(ok?'text-emerald-700':'text-red-600'); }
 $('#khoSbSave').onclick=async()=>{

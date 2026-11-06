@@ -702,6 +702,7 @@ async function processOrder(order_sn, statusHint, backfill = false) {
 
 async function handlePush(req) {
   const raw = await req.text();
+  if (raw.length > 200000) return json({ error: "payload too large" }, 413);
   const c = await cfg();
   const base = `${PUBLIC_BASE}|${raw}`;
   const got = req.headers.get("authorization") ?? "";
@@ -732,9 +733,9 @@ async function handlePush(req) {
   } else if (body.data?.conversation_id) {
     // Push tin nhan chat (chua ro chinh xac ma "code" Shopee dung cho chat vi tai lieu khong tra cuu duoc
     // luc build tinh nang nay -> nhan dien theo HINH DANG payload thay vi theo code so).
-    try { await pullChatMessages(body.data.conversation_id); await pullChatConversations(); } catch (e) { await log("shopee_to_db", "chat_push", "error", { msg: String(e), sig_valid: sigValid, data: body.data }); }
+    try { await pullChatMessages(body.data.conversation_id); await pullChatConversations(); } catch (e) { await log("shopee_to_db", "chat_push", "error", { msg: String(e), sig_valid: sigValid, data: JSON.stringify(body.data ?? null).slice(0, 500) }); }
   } else {
-    await log("shopee_to_db", "push", "success", { code: body.code, sig_valid: sigValid, data: body.data ?? null });
+    await log("shopee_to_db", "push", "success", { code: body.code, sig_valid: sigValid, data: sigValid ? (body.data ?? null) : JSON.stringify(body.data ?? null).slice(0, 500) });
   }
   return json({ ok: true });
 }
@@ -1167,7 +1168,9 @@ Deno.serve(async (req) => {
       const path = "/api/v2/shop/auth_partner";
       const t = nowSec();
       const sign = await hmac(c.key, `${c.partner_id}${path}${t}`);
-      const redirect = `${PUBLIC_BASE}?action=callback`;
+      const state = crypto.randomUUID().replace(/-/g, "");
+      await admin.from("kho_auth").update({ auth_state: state, auth_state_at: new Date().toISOString() }).eq("id", 1);
+      const redirect = `${PUBLIC_BASE}?action=callback&state=${state}`;
       const authUrl = `${c.host}${path}?partner_id=${c.partner_id}&timestamp=${t}&sign=${sign}&redirect=${encodeURIComponent(redirect)}`;
       if (url.searchParams.get("go") === "1") return Response.redirect(authUrl, 302);
       return json({ auth_url: authUrl, note: "Mo trong vong 5 phut" });
@@ -1177,6 +1180,15 @@ Deno.serve(async (req) => {
       const code = url.searchParams.get("code");
       const shop_id = url.searchParams.get("shop_id");
       if (!code || !shop_id) return appRedirect("shopee_error=" + encodeURIComponent("Thieu code hoac shop_id"));
+      // chỉ nhận cấp quyền do chính chủ shop bấm trong app (state khớp, còn hạn 30 phút, dùng 1 lần)
+      const st = url.searchParams.get("state") ?? "";
+      const { data: au } = await admin.from("kho_auth").select("auth_state,auth_state_at").eq("id", 1).maybeSingle();
+      const fresh = !!au?.auth_state_at && (Date.now() - new Date(au.auth_state_at).getTime()) < 30 * 60 * 1000;
+      if (!st || !au?.auth_state || st !== au.auth_state || !fresh) {
+        await log("db_to_shopee", "auth", "error", { reason: "state_khong_khop" });
+        return appRedirect("shopee_error=" + encodeURIComponent("Link cap quyen khong hop le hoac het han. Bam Ket noi shop Shopee lai trong app."));
+      }
+      await admin.from("kho_auth").update({ auth_state: null, auth_state_at: null }).eq("id", 1);
       const c = await cfg();
       const path = "/api/v2/auth/token/get";
       const t = nowSec();
