@@ -106,6 +106,8 @@ update public.kho_settings set owner_email = 'email-cua-ban@vidu.com' where id =
 
 **Shopee báo lỗi redirect khi cấp quyền** — Kiểm tra *Redirect URL Domain* trong app Shopee Open Platform đúng `<MÃ_PROJECT>.supabase.co`; đúng môi trường (Partner Key Test dùng với *Thử nghiệm*, Key Live dùng với *Shop thật*).
 
+**"Link cấp quyền không hợp lệ hoặc hết hạn"** — Mỗi lần bấm *Kết nối shop Shopee* app tạo 1 mã dùng 1 lần, hạn 30 phút (chống người khác gắn shop lạ vào app của bạn). Chỉ cần bấm lại nút trong app.
+
 **Không muốn app đẩy tồn lên Shopee (chỉ xem báo cáo)** — chạy SQL:
 ```sql
 update public.kho_settings set push_stock_enabled = false where id = 1;
@@ -113,7 +115,7 @@ update public.kho_settings set push_stock_enabled = false where id = 1;
 
 **Lệch 1–2 cái giữa app và Shopee** — thường do đơn *chưa thanh toán* (Shopee giữ hàng ngay, app chỉ trừ khi đơn sang *Chờ lấy hàng*), hoặc có phần mềm khác / nhân viên sửa tồn thẳng trên Shopee.
 
-**Mạng chặn thư viện** — App tải thư viện từ `unpkg.com` và `cdn.tailwindcss.com`. Nếu trắng trang/không đăng nhập được, đổi mạng hoặc tắt VPN.
+**Mạng chặn thư viện** — App chỉ cần tới được Supabase (`*.supabase.co`) và Google Fonts — thư viện đã nằm sẵn trong `web/vendor/`. Nếu không đăng nhập được, thử đổi mạng / tắt VPN.
 
 ## Cập nhật phiên bản mới
 1. Lấy mã mới (Sync fork trên GitHub — Vercel tự deploy lại giao diện).
@@ -125,6 +127,10 @@ update public.kho_settings set push_stock_enabled = false where id = 1;
 - Mọi bảng bật Row Level Security: chỉ email chủ shop đọc/ghi được.
 - Repo này **không chứa** khoá bí mật nào. Đừng commit `web/config.js` có chứa secret key (file này chỉ để Publishable key — vốn là khoá công khai).
 - Nên bật *Leaked password protection* (Supabase › Authentication › Policies/Passwords).
+- **Tạo tài khoản chủ shop ngay sau khi cài** rồi tắt đăng ký mới (bước 5). Lý do: lúc chưa có chủ, người đầu tiên đăng nhập sẽ thành chủ shop. Nếu lỡ bị người khác nhận, sửa bằng câu SQL ở mục *Câu hỏi thường gặp*.
+- Cấp quyền shop có mã chống giả mạo (state). Webhook chưa xác minh được chữ ký thì máy chủ **không tin** nội dung webhook — luôn hỏi lại Shopee chi tiết đơn trước khi trừ kho.
+- Thư viện Supabase / Tailwind được đóng gói sẵn trong `web/vendor/` (bản cố định), không tải bản mới nhất từ CDN. `web/vercel.json` bật header chống nhúng iframe (clickjacking).
+- Mỗi shop nên dùng **project Supabase + app Vercel riêng**. Đừng dùng chung 1 project cho nhiều người.
 
 ## Đóng góp
 Báo lỗi / góp ý qua **Issues**, sửa mã qua **Pull Request**. Giao diện là 1 file `web/index.html` (JavaScript thuần + Tailwind CDN), không cần build.
